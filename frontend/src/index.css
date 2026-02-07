@@ -1,0 +1,615 @@
+/* ============================================
+   GLOBAL STYLES & THEME VARIABLES
+   ============================================ */
+
+:root {
+  --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+
+  /* Auth page palette (always dark) */
+  --auth-bg: #060a14;
+  --auth-surface: rgba(255, 255, 255, 0.04);
+  --auth-glass: rgba(255, 255, 255, 0.07);
+  --auth-glass-border: rgba(255, 255, 255, 0.1);
+  --auth-text: #e8ecf4;
+  --auth-text-muted: rgba(255, 255, 255, 0.5);
+  --auth-accent: #3b82f6;
+  --auth-accent-glow: rgba(59, 130, 246, 0.3);
+}
+
+/* ---- Light theme dashboard variables ---- */
+[data-theme="light"] {
+  --dash-bg: #f5f7fa;
+  --dash-surface: #ffffff;
+  --dash-surface-hover: #ffffff;
+  --dash-border: #e8ecf0;
+  --dash-border-subtle: #f0f0f0;
+  --dash-text: #1a1a2e;
+  --dash-text-secondary: #6b7280;
+  --dash-header-bg: #ffffff;
+  --dash-header-border: #f0f0f0;
+  --dash-card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --dash-card-shadow-hover: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --dash-stat-bg: #ffffff;
+  --dash-filter-bg: #ffffff;
+  --dash-orb-1: transparent;
+  --dash-orb-2: transparent;
+  --dash-grid-line: transparent;
+}
+
+/* ---- Dark theme dashboard variables ---- */
+[data-theme="dark"] {
+  --dash-bg: #060a14;
+  --dash-surface: rgba(255, 255, 255, 0.04);
+  --dash-surface-hover: rgba(255, 255, 255, 0.06);
+  --dash-border: rgba(255, 255, 255, 0.08);
+  --dash-border-subtle: rgba(255, 255, 255, 0.06);
+  --dash-text: #e8ecf4;
+  --dash-text-secondary: rgba(255, 255, 255, 0.5);
+  --dash-header-bg: rgba(6, 10, 20, 0.85);
+  --dash-header-border: rgba(255, 255, 255, 0.06);
+  --dash-card-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --dash-card-shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --dash-stat-bg: rgba(255, 255, 255, 0.04);
+  --dash-filter-bg: rgba(255, 255, 255, 0.03);
+  --dash-orb-1: radial-gradient(circle, rgba(59, 130, 246, 0.15) 0%, transparent 70%);
+  --dash-orb-2: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%);
+  --dash-grid-line: rgba(255, 255, 255, 0.015);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Smooth transitions for interactive elements */
+.ant-btn,
+.ant-tag,
+.ant-card,
+.ant-table-row {
+  transition: all 0.2s ease;
+}
+
+.ant-table-row:hover {
+  transform: translateY(-1px);
+}
+
+/* ============================================
+   AUTH PAGES — DARK IMMERSIVE LAYOUT
+   ============================================ */
+
+.auth-scene {
+  position: relative;
+  min-height: 100vh;
+  background: var(--auth-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Animated gradient orbs */
+.auth-scene::before,
+.auth-scene::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.auth-scene::before {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.35) 0%, transparent 70%);
+  top: -15%;
+  right: -10%;
+  animation: orb-drift-1 18s ease-in-out infinite;
+}
+
+.auth-scene::after {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.25) 0%, transparent 70%);
+  bottom: -10%;
+  left: -8%;
+  animation: orb-drift-2 22s ease-in-out infinite;
+}
+
+@keyframes orb-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-40px, 30px) scale(1.05); }
+  66% { transform: translate(20px, -20px) scale(0.95); }
+}
+
+@keyframes orb-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -40px) scale(1.08); }
+  66% { transform: translate(-20px, 25px) scale(0.92); }
+}
+
+/* Subtle grid pattern overlay */
+.auth-grid,
+.dash-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 100%);
+  pointer-events: none;
+}
+
+.dash-grid {
+  background-image:
+    linear-gradient(var(--dash-grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--dash-grid-line) 1px, transparent 1px);
+}
+
+/* Main content wrapper */
+.auth-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  max-width: 440px;
+  padding: 32px 24px;
+  animation: auth-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes auth-enter {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Brand mark */
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 48px;
+}
+
+.auth-brand-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--auth-accent), #818cf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px var(--auth-accent-glow);
+}
+
+.auth-brand-icon .anticon {
+  font-size: 20px;
+  color: white;
+}
+
+.auth-brand-name {
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--auth-text);
+  letter-spacing: -0.3px;
+}
+
+/* Glass card */
+.auth-glass-card {
+  width: 100%;
+  background: var(--auth-glass);
+  border: 1px solid var(--auth-glass-border);
+  border-radius: 20px;
+  padding: 40px 36px;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 20px 50px -12px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.auth-glass-card .auth-heading {
+  font-family: var(--font-body);
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--auth-text);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.5px;
+}
+
+.auth-glass-card .auth-subheading {
+  font-size: 14px;
+  color: var(--auth-text-muted);
+  margin: 0 0 32px 0;
+}
+
+/* Override Ant Design form styles inside glass card */
+.auth-glass-card .ant-form-item-label > label {
+  color: rgba(255, 255, 255, 0.65) !important;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.auth-glass-card .ant-input,
+.auth-glass-card .ant-input-password .ant-input {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: var(--auth-text) !important;
+  border-radius: 10px !important;
+  height: 46px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.auth-glass-card .ant-input::placeholder {
+  color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.auth-glass-card .ant-input:focus,
+.auth-glass-card .ant-input-focused,
+.auth-glass-card .ant-input-password:focus-within .ant-input {
+  border-color: var(--auth-accent) !important;
+  box-shadow: 0 0 0 3px var(--auth-accent-glow) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.auth-glass-card .ant-input-prefix {
+  color: rgba(255, 255, 255, 0.35) !important;
+  margin-inline-end: 10px;
+}
+
+.auth-glass-card .ant-input-password .ant-input-suffix .anticon {
+  color: rgba(255, 255, 255, 0.35) !important;
+}
+
+.auth-glass-card .ant-input-affix-wrapper {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  padding: 0 14px;
+  transition: all 0.2s ease;
+}
+
+.auth-glass-card .ant-input-affix-wrapper:focus-within,
+.auth-glass-card .ant-input-affix-wrapper-focused {
+  border-color: var(--auth-accent) !important;
+  box-shadow: 0 0 0 3px var(--auth-accent-glow) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+
+.auth-glass-card .ant-input-affix-wrapper .ant-input {
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  height: 44px;
+}
+
+/* Primary button inside glass card */
+.auth-glass-card .ant-btn-primary {
+  height: 46px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  background: linear-gradient(135deg, var(--auth-accent), #6366f1) !important;
+  border: none !important;
+  box-shadow: 0 4px 16px var(--auth-accent-glow);
+  transition: all 0.25s ease;
+}
+
+.auth-glass-card .ant-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(59, 130, 246, 0.4) !important;
+}
+
+.auth-glass-card .ant-btn-primary:active {
+  transform: translateY(0);
+}
+
+/* Link text under form */
+.auth-footer-text {
+  color: var(--auth-text-muted);
+  font-size: 14px;
+}
+
+.auth-footer-text a {
+  color: var(--auth-accent);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.auth-footer-text a:hover {
+  color: #60a5fa;
+}
+
+/* Feature pills row */
+.auth-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 32px;
+  justify-content: center;
+  animation: auth-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.2s both;
+}
+
+.auth-feature-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  background: var(--auth-surface);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  transition: all 0.3s ease;
+  cursor: default;
+}
+
+.auth-feature-pill:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.auth-feature-pill .anticon {
+  font-size: 12px;
+  color: var(--auth-accent);
+  opacity: 0.8;
+}
+
+/* Tech stack bar at bottom */
+.auth-tech-bar {
+  margin-top: 20px;
+  text-align: center;
+  animation: auth-enter 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.35s both;
+}
+
+.auth-tech-bar span {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.2);
+  letter-spacing: 0.03em;
+}
+
+.auth-tech-bar .dot {
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  margin: 0 8px;
+  vertical-align: middle;
+}
+
+/* ============================================
+   DASHBOARD LAYOUT
+   ============================================ */
+
+.dash-layout {
+  min-height: 100vh;
+  background: var(--dash-bg);
+  position: relative;
+  overflow-x: hidden;
+  transition: background 0.3s ease;
+}
+
+/* Dark mode background orbs for dashboard */
+.dash-layout::before,
+.dash-layout::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.5;
+  will-change: transform;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dash-layout::before {
+  width: 500px;
+  height: 500px;
+  background: var(--dash-orb-1);
+  top: -10%;
+  right: -5%;
+  animation: orb-drift-1 18s ease-in-out infinite;
+}
+
+.dash-layout::after {
+  width: 400px;
+  height: 400px;
+  background: var(--dash-orb-2);
+  bottom: -8%;
+  left: -5%;
+  animation: orb-drift-2 22s ease-in-out infinite;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--dash-header-bg);
+  padding: 0 24px;
+  border-bottom: 1px solid var(--dash-header-border);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+[data-theme="dark"] .app-header {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+/* Dashboard content area */
+.dash-content {
+  position: relative;
+  z-index: 1;
+  padding: 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Stats cards */
+.stats-row .ant-card {
+  border-radius: 12px;
+  border: 1px solid var(--dash-border);
+  background: var(--dash-stat-bg);
+  box-shadow: var(--dash-card-shadow);
+  transition: all 0.25s ease;
+}
+
+.stats-row .ant-card:hover {
+  box-shadow: var(--dash-card-shadow-hover);
+  border-color: rgba(59, 130, 246, 0.2);
+}
+
+[data-theme="dark"] .stats-row .ant-card {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Filter bar card */
+.dash-filter-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--dash-border) !important;
+  background: var(--dash-filter-bg) !important;
+  box-shadow: none !important;
+}
+
+[data-theme="dark"] .dash-filter-card {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+/* Table card */
+.dash-table-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--dash-border) !important;
+  background: var(--dash-surface) !important;
+  box-shadow: var(--dash-card-shadow) !important;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .dash-table-card {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="dark"] .dash-table-card .ant-table {
+  background: transparent !important;
+}
+
+[data-theme="dark"] .dash-table-card .ant-table-thead > tr > th,
+[data-theme="dark"] .dash-table-card .ant-table-thead > tr > td {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06) !important;
+}
+
+[data-theme="dark"] .dash-table-card .ant-table-tbody > tr > td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme="dark"] .dash-table-card .ant-table-tbody > tr:hover > td {
+  background: rgba(255, 255, 255, 0.03) !important;
+}
+
+[data-theme="dark"] .dash-table-card .ant-table-cell {
+  background: transparent !important;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border: 1px solid var(--dash-border);
+  background: var(--dash-surface);
+  color: var(--dash-text-secondary);
+  transition: all 0.25s ease;
+  font-size: 16px;
+}
+
+.theme-toggle:hover {
+  border-color: var(--auth-accent);
+  color: var(--auth-accent);
+  background: var(--dash-surface-hover);
+}
+
+/* Header brand icon */
+.header-brand-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3b82f6, #818cf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.25);
+}
+
+/* Priority dot indicator */
+.priority-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 480px) {
+  .auth-glass-card {
+    padding: 32px 24px;
+    border-radius: 16px;
+  }
+
+  .auth-features {
+    gap: 6px;
+  }
+
+  .auth-feature-pill {
+    font-size: 11px;
+    padding: 5px 10px;
+  }
+
+  .dash-content {
+    padding: 16px;
+  }
+}
