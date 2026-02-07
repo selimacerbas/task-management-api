@@ -37,7 +37,7 @@ services:
       - taskman-network
 
   jaeger:
-    image: jaegertracing/jaeger:2
+    image: jaegertracing/all-in-one:latest
     environment:
       COLLECTOR_OTLP_ENABLED: "true"
     ports:
