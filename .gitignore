@@ -40,3 +40,6 @@ services/*/alembic/versions/*.pyc
 .coverage
 htmlcov/
 .pytest_cache/
+
+# Personal notes
+REVIEW_PREP.md
