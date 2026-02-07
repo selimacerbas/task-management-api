@@ -1,4 +1,4 @@
-.PHONY: up down build logs restart clean ps
+.PHONY: up down build logs restart clean ps db-auth db-task db-audit db-users db-tasks db-audit-logs
 
 # Start all services
 up:
@@ -46,6 +46,22 @@ migrate-audit:
 
 # Run all migrations
 migrate: migrate-auth migrate-task migrate-audit
+
+# Database shell (interactive psql)
+db-auth:
+	docker compose exec postgres psql -U taskman -d auth_db
+db-task:
+	docker compose exec postgres psql -U taskman -d task_db
+db-audit:
+	docker compose exec postgres psql -U taskman -d audit_db
+
+# Quick queries
+db-users:
+	docker compose exec postgres psql -U taskman -d auth_db -c "SELECT id, email, username, role, created_at FROM users;"
+db-tasks:
+	docker compose exec postgres psql -U taskman -d task_db -c "SELECT id, title, status, priority, created_by, created_at FROM tasks;"
+db-audit-logs:
+	docker compose exec postgres psql -U taskman -d audit_db -c "SELECT id, event_type, entity_type, entity_id, user_id, created_at FROM audit_logs ORDER BY created_at DESC LIMIT 20;"
 
 # Open Jaeger UI
 jaeger:
