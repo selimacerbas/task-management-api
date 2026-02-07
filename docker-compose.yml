@@ -1,0 +1,162 @@
+services:
+  # ============================================
+  # Infrastructure
+  # ============================================
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-taskman}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskman_secret}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskman}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskman-network
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - taskman-network
+
+  jaeger:
+    image: jaegertracing/jaeger:2
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"   # Jaeger UI
+      - "4317:4317"     # OTLP gRPC
+      - "4318:4318"     # OTLP HTTP
+    networks:
+      - taskman-network
+
+  # ============================================
+  # Backend Services
+  # ============================================
+
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production-min-32-chars}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-taskman}:${POSTGRES_PASSWORD:-taskman_secret}@postgres:5432/${AUTH_DB_NAME:-auth_db}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - OTEL_SERVICE_NAME=auth-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./services/auth-service:/app
+    ports:
+      - "8001:8000"
+    networks:
+      - taskman-network
+
+  task-service:
+    build:
+      context: ./services/task-service
+      dockerfile: Dockerfile
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production-min-32-chars}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-taskman}:${POSTGRES_PASSWORD:-taskman_secret}@postgres:5432/${TASK_DB_NAME:-task_db}
+      - REDIS_URL=redis://redis:6379/0
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - OTEL_SERVICE_NAME=task-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/task-service:/app
+    ports:
+      - "8002:8000"
+    networks:
+      - taskman-network
+
+  audit-service:
+    build:
+      context: ./services/audit-service
+      dockerfile: Dockerfile
+    environment:
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production-min-32-chars}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-taskman}:${POSTGRES_PASSWORD:-taskman_secret}@postgres:5432/${AUDIT_DB_NAME:-audit_db}
+      - REDIS_URL=redis://redis:6379/0
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - OTEL_SERVICE_NAME=audit-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./services/audit-service:/app
+    ports:
+      - "8003:8000"
+    networks:
+      - taskman-network
+
+  # ============================================
+  # Frontend
+  # ============================================
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+    ports:
+      - "5173:5173"
+    networks:
+      - taskman-network
+
+  # ============================================
+  # API Gateway
+  # ============================================
+
+  nginx:
+    image: nginx:alpine
+    volumes:
+      - ./gateway/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "80:80"
+    depends_on:
+      - auth-service
+      - task-service
+      - audit-service
+      - frontend
+    networks:
+      - taskman-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  taskman-network:
+    driver: bridge

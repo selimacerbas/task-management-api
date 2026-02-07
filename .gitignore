@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.venv/
+venv/
+*.egg
+
+# Node
+node_modules/
+frontend/dist/
+
+# Environment
+.env
+*.env.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker
+docker-compose.override.yml
+
+# Database
+*.db
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic
+services/*/alembic/versions/*.pyc
+
+# Coverage
+.coverage
+htmlcov/
+.pytest_cache/
