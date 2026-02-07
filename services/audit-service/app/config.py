@@ -2,12 +2,12 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    # JWT (shared secret for token validation)
-    jwt_secret_key: str = "dev-secret-change-in-production-min-32-chars"
+    # JWT — secret MUST be provided via environment variable
+    jwt_secret_key: str
     jwt_algorithm: str = "HS256"
 
-    # Database
-    database_url: str = "postgresql+asyncpg://taskman:taskman_secret@postgres:5432/audit_db"
+    # Database — connection string MUST be provided via environment variable
+    database_url: str
 
     # Redis
     redis_url: str = "redis://redis:6379/0"

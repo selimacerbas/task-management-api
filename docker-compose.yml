@@ -6,15 +6,15 @@ services:
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-taskman}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-taskman_secret}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./scripts/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskman}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -56,12 +56,12 @@ services:
       context: ./services/auth-service
       dockerfile: Dockerfile
     environment:
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production-min-32-chars}
-      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
-      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
-      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS:-7}
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-taskman}:${POSTGRES_PASSWORD:-taskman_secret}@postgres:5432/${AUTH_DB_NAME:-auth_db}
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - REFRESH_TOKEN_EXPIRE_DAYS=${REFRESH_TOKEN_EXPIRE_DAYS}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${AUTH_DB_NAME}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
       - OTEL_SERVICE_NAME=auth-service
     depends_on:
       postgres:
@@ -78,11 +78,11 @@ services:
       context: ./services/task-service
       dockerfile: Dockerfile
     environment:
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production-min-32-chars}
-      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-taskman}:${POSTGRES_PASSWORD:-taskman_secret}@postgres:5432/${TASK_DB_NAME:-task_db}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${TASK_DB_NAME}
       - REDIS_URL=redis://redis:6379/0
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
       - OTEL_SERVICE_NAME=task-service
     depends_on:
       postgres:
@@ -101,11 +101,11 @@ services:
       context: ./services/audit-service
       dockerfile: Dockerfile
     environment:
-      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-dev-secret-change-in-production-min-32-chars}
-      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
-      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-taskman}:${POSTGRES_PASSWORD:-taskman_secret}@postgres:5432/${AUDIT_DB_NAME:-audit_db}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM}
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${AUDIT_DB_NAME}
       - REDIS_URL=redis://redis:6379/0
-      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT:-http://jaeger:4317}
+      - OTEL_EXPORTER_OTLP_ENDPOINT=${OTEL_EXPORTER_OTLP_ENDPOINT}
       - OTEL_SERVICE_NAME=audit-service
     depends_on:
       postgres:

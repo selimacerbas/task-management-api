@@ -223,43 +223,103 @@ See `.env.example` for the complete list.
 ## What I Would Do Differently in Production
 
 ### Authentication & Security
-- **RS256 asymmetric JWT**: Auth service signs with private key, other services verify with public key only. No shared secrets.
-- **JWKS endpoint**: Publish public keys at `/.well-known/jwks.json` for zero-config key rotation.
-- **OAuth2/OIDC**: Integrate with identity providers (Auth0, Keycloak) for SSO.
+
+Currently, all services share the same JWT secret (HS256). This is pragmatic for development but has a key weakness: every service that knows the secret can **create** tokens, not just verify them. If any service is compromised, the attacker can forge tokens for any user.
+
+**Production upgrade: RS256 + JWKS**
+
+```
+Current (HS256 - shared secret):
+  auth-service:  JWT_SECRET=abc123  ← signs AND verifies
+  task-service:  JWT_SECRET=abc123  ← can also sign (risk!)
+  audit-service: JWT_SECRET=abc123  ← can also sign (risk!)
+
+Production (RS256 - asymmetric keys):
+  auth-service:  Has PRIVATE key (only service that can SIGN tokens)
+                 Exposes GET /.well-known/jwks.json → returns PUBLIC key
+
+  task-service:  Fetches public key from JWKS endpoint, caches it
+                 Can VERIFY tokens but CANNOT CREATE fake ones
+
+  audit-service: Same — verify only, cannot forge tokens
+```
+
+JWKS (JSON Web Key Set) is a standard URL that returns public keys in JSON format. Every IAM platform (Keycloak, Zitadel, Auth0) provides this automatically. Key rotation becomes zero-downtime: publish a new key, old tokens remain valid until expiry.
+
+**Additional security upgrades:**
+- **OAuth2/OIDC via Zitadel**: Lightweight, cloud-native identity provider with native multi-tenancy, social login, MFA, and JWKS. Alternative: Keycloak if SAML or Active Directory integration is required.
 - **Rate limiting**: Per-user and per-IP rate limits at the gateway level.
-- **mTLS between services**: Using Istio service mesh for zero-trust networking.
+- **mTLS between services**: Using Cilium service mesh for zero-trust networking with eBPF-based identity enforcement (see Service Mesh section below).
 
 ### Infrastructure
+
 - **Kubernetes**: Each service as a Deployment with HPA (auto-scaling). Helm charts for environment management.
-- **K8s Ingress**: Replace Nginx container with Ingress Controller (or Istio Gateway).
-- **Separate DB instances**: Each service gets its own PostgreSQL instance for true isolation.
-- **Redis Cluster**: Replicated Redis for high availability.
-- **Kafka**: Replace Redis Streams for event streaming at scale (millions of events/day).
-- **Schema Registry**: Avro/Protobuf schemas for event contracts.
+- **K8s Ingress**: Replace Nginx container with Cilium Gateway API or Ingress Controller.
+- **Database strategy**: Currently using one PostgreSQL instance with separate databases per service (`init-databases.sql` creates `auth_db`, `task_db`, `audit_db`). Data is isolated but shares one process. In production, migrate to managed instances (AWS RDS) per service only when independent scaling, backup schedules, or version requirements diverge.
+- **Redis Cluster**: Replicated Redis for high availability. Current single-node Redis is sufficient for development.
+- **NATS JetStream → Kafka**: Redis Streams is correct for current scale (<50K events/min, 1 consumer). Upgrade to NATS JetStream when needing disk-based persistence and event replay, or to Kafka for exactly-once delivery and millions of events/day.
+- **Schema Registry**: Avro/Protobuf schemas for event contracts, ensuring producers and consumers agree on message format.
+
+### Service Mesh: Cilium + Hubble
+
+In production Kubernetes, services need encrypted communication, identity-based access control, and network observability. A service mesh provides this at the infrastructure layer so application code doesn't need to implement it.
+
+**Why Cilium over Istio:**
+
+| Feature | Cilium | Istio |
+|---------|--------|-------|
+| **Implementation** | eBPF (kernel-level) | Envoy sidecar proxies |
+| **Performance** | Near-native (no proxy hop) | ~2-5ms latency per hop |
+| **Resource overhead** | Low (no sidecars) | High (1 Envoy per pod) |
+| **mTLS** | eBPF-accelerated | Envoy-based |
+| **Observability** | Hubble (built-in flow visibility) | Kiali + Jaeger |
+| **Network policy** | L3/L4/L7 with eBPF | L4/L7 with Envoy |
+| **CNCF status** | Graduated | Graduated |
+
+**What Cilium provides:**
+- **mTLS everywhere**: Encrypted service-to-service communication without sidecars. Auth-service → task-service traffic is encrypted and identity-verified at the kernel level.
+- **Network policies**: "task-service can only talk to postgres and redis, not directly to audit-service." Enforced by eBPF, not application code.
+- **Hubble**: Real-time network flow visualization. See which service called which, with latency and error rates. Complements Jaeger (application traces) with network-level observability.
 
 ### Observability
-- **Grafana stack**: Grafana (dashboards) + Loki (logs) + Tempo (traces) + Prometheus (metrics).
-- **OpenTelemetry Collector**: Central telemetry pipeline for routing spans, metrics, and logs.
+
+Current setup uses Jaeger for distributed tracing (one of three observability pillars). Production adds metrics and logging:
+
+- **Grafana LGTM stack**: Loki (logs) + Grafana (dashboards) + Tempo (traces, replaces Jaeger) + Prometheus (metrics). All open source, runs on ~1.4GB RAM total.
+- **OpenTelemetry Collector**: Vendor-agnostic telemetry pipeline between services and backends. Instrument once, export to any backend. Enables switching from Jaeger to Tempo without changing application code.
 - **Alerting**: PagerDuty/OpsGenie integration for SLA-based alerts.
 - **SLIs/SLOs**: Define service-level indicators (p99 latency, error rate) and objectives.
 
 ### Resilience
-- **Circuit breakers**: Prevent cascade failures between services.
+- **Circuit breakers**: Prevent cascade failures between services (e.g., if audit-service is down, task-service still works).
 - **Retry with exponential backoff**: For inter-service and external API calls.
-- **Dead letter queue**: For events that fail processing after retries.
+- **Dead letter queue**: For events that fail processing after retries. Currently, Redis Streams retries indefinitely via pending entries list (PEL).
 - **Health checks with readiness/liveness probes**: K8s-native health monitoring.
 
 ### CI/CD
 - **GitHub Actions**: Lint, test, build, push to container registry on every PR.
 - **Trunk-based development**: Short-lived feature branches, continuous deployment.
-- **Terraform**: Infrastructure as Code for AWS resources (ECS/EKS, RDS, ElastiCache).
+- **Terraform**: Infrastructure as Code for AWS resources (EKS, RDS, ElastiCache).
 - **Canary deployments**: Gradual rollout with automated rollback.
 
 ### Multi-Tenancy (SaaS Considerations)
-- **Tenant isolation**: Row-level security in PostgreSQL or separate schemas per tenant.
-- **Tenant-aware JWT**: Include `tenant_id` in token claims.
+
+Multi-tenancy allows one application to serve multiple customers (tenants) with complete data isolation. Company A's tasks are invisible to Company B, even though they share the same infrastructure.
+
+**Implementation approaches (from simple to complex):**
+
+| Approach | How it works | Pros | Cons |
+|----------|-------------|------|------|
+| **Row-level security** | Add `tenant_id` to every table, PostgreSQL RLS policies filter automatically | Cheapest, one DB | Complex policies, risk of data leaks if filter missed |
+| **Schema-per-tenant** | Each tenant gets own PostgreSQL schema (`tenant_a.tasks`, `tenant_b.tasks`) | Good isolation, one DB instance | Schema migrations run N times, connection pooling complexity |
+| **DB-per-tenant** | Each tenant gets own database | Strongest isolation | Expensive, operational overhead, connection management |
+
+**Supporting infrastructure:**
+- **Tenant-aware JWT**: Include `tenant_id` in token claims. Every API request carries tenant context.
 - **Resource quotas**: Per-tenant limits on tasks, API calls, storage.
 - **Data residency**: Tenant data in specific regions for compliance (GDPR).
+
+For this assessment, the system is **single-tenant** by design. The row-level security approach is the typical first step when adding multi-tenancy.
 
 ## Project Structure
 
